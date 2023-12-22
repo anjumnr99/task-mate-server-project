@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 const app = express();
-const cookieParser = require('cookie-parser')
+
 const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
@@ -11,9 +11,6 @@ const port = process.env.PORT || 5000
 // middleware
 app.use(cors());
 app.use(express.json());
-app.use(cookieParser());
-
-
 
 
 
@@ -35,6 +32,31 @@ async function run() {
     
     const taskCollection = client.db("taskMateDB").collection("tasks");
 
+    app.post('/jwt', async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
+      console.log('jwt', token);
+      res.send({ token });
+    });
+
+    const verifyToken = (req, res, next) => {
+      if (!req.headers.authorization) {
+        return res.status(401).send({ message: 'Forbidden Access' })
+      }
+    
+      const token = req.headers.authorization.split(' ')[1];
+      console.log('Token:', req.headers.authorization);
+      jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+        if (err) {
+          return res.status(401).send({ message: "Forbidden Access" })
+        }
+        req.decoded = decoded;
+        next();
+      })
+    
+    };
+    
+    
     app.post('/tasks', async (req, res) => {
       const newTask = req.body;
       console.log(newTask);
@@ -91,8 +113,8 @@ async function run() {
 
 
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
